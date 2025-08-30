@@ -13,11 +13,16 @@ import task_pb2_grpc
 from model import Task
 from priority_queue import TaskQueue
 
+# Retry configuration
+MAX_RETRIES = 3
+FAILURE_SIMULATION_RATE = 0.3  # 30% failure rate for testing
+
 class TaskDistributorService(task_pb2_grpc.TaskDistributorServicer):
     def __init__(self):
         self.task_queue = TaskQueue()
         self.completed_tasks = {}  # Store completed task info
-        print("server==> TaskDistributorService initialized with priority queue")
+        self.active_tasks = {}  # Store tasks being processed (task_id -> Task object)
+        print("server==> TaskDistributorService initialized with priority queue and retry mechanism")
     
     def Ping(self, request, context):
         response_message = f"Pong! Received: {request.message}"
@@ -79,6 +84,9 @@ class TaskDistributorService(task_pb2_grpc.TaskDistributorServicer):
             # Mark task as assigned to this agent
             task.assigned_agent = agent_id
             
+            # Store task for potential retry
+            self.active_tasks[task.id] = task
+            
             print(f"server ==> Agent {agent_id} fetched task: {task}")
             
             return task_pb2.FetchTaskResponse(
@@ -102,22 +110,44 @@ class TaskDistributorService(task_pb2_grpc.TaskDistributorServicer):
             success = request.success
             result = request.result
             
-            self.completed_tasks[task_id] = {
-                'agent_id': agent_id,
-                'success': success,
-                'result': result,
-                'completed_at': datetime.now()
-            }
+            # Get the original task from active tasks
+            original_task = self.active_tasks.get(task_id)
             
             if success:
+                # Task completed successfully
                 print(f"server ==> Task {task_id[:8]} completed successfully by {agent_id}")
                 print(f"server ==> Result: {result}")
+                
+                # Store in completed tasks
+                self.completed_tasks[task_id] = {
+                    'agent_id': agent_id,
+                    'success': True,
+                    'result': result,
+                    'completed_at': datetime.now(),
+                    'retry_count': original_task.retry_count if original_task else 0
+                }
+                
+                # Clean up active tasks
+                if task_id in self.active_tasks:
+                    del self.active_tasks[task_id]
+                
                 message = "Task completed successfully"
+                
             else:
+                # Task failed - check if we should retry
                 print(f"server ==> Task {task_id[:8]} failed by {agent_id}")
                 print(f"server ==> Error: {result}")
-                message = "Task failure acknowledged"
                 
+                if original_task and original_task.retry_count < MAX_RETRIES:
+                    # Retry the task
+                    message = self._retry_task(original_task, result)
+                else:
+                    # Max retries reached or task not found
+                    message = self._handle_final_failure(task_id, result, original_task)
+                    
+                    # Clean up active tasks
+                    if task_id in self.active_tasks:
+                        del self.active_tasks[task_id]
             
             return task_pb2.CompleteTaskResponse(
                 acknowledged=True,
@@ -132,6 +162,36 @@ class TaskDistributorService(task_pb2_grpc.TaskDistributorServicer):
                 acknowledged=False,
                 message=f"Error: {str(e)}"
             )
+    
+    def _retry_task(self, task, error_message):
+        """Retry a failed task by incrementing retry count and re-adding to queue"""
+        task.increment_retry()
+        
+        print(f"server ==> Retrying task {task.id[:8]} (attempt {task.retry_count + 1}/{MAX_RETRIES + 1})")
+        print(f"server ==> Previous error: {error_message}")
+        
+        # Re-add to queue for immediate retry (lower priority due to is_retry() = True)
+        queue_position = self.task_queue.add_task(task)
+        
+        return f"Task failed, retrying (attempt {task.retry_count + 1}/{MAX_RETRIES + 1})"
+    
+    def _handle_final_failure(self, task_id, error_message, original_task):
+        """Handle a task that has exceeded maximum retry attempts"""
+        retry_count = original_task.retry_count if original_task else 0
+        
+        print(f"server ==> Task {task_id[:8]} PERMANENTLY FAILED after {retry_count + 1} attempts")
+        print(f"server ==> Final error: {error_message}")
+        
+        # Store in completed tasks as permanently failed
+        self.completed_tasks[task_id] = {
+            'agent_id': 'N/A',
+            'success': False,
+            'result': f"PERMANENT FAILURE after {retry_count + 1} attempts: {error_message}",
+            'completed_at': datetime.now(),
+            'retry_count': retry_count
+        }
+        
+        return f"Task permanently failed after {retry_count + 1} attempts"
 
 
 def serve():

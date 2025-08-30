@@ -2,12 +2,16 @@ import grpc
 import time
 import sys
 import os
+import random
 
 # Add proto directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'proto'))
 
 import task_pb2
 import task_pb2_grpc
+
+# Failure simulation configuration
+FAILURE_RATE = 0.3  # 30% failure rate for testing retry mechanism
 
 class TaskAgent:
     def __init__(self, agent_id):
@@ -58,11 +62,18 @@ class TaskAgent:
         # Simulate work
         time.sleep(task.est_processing_time)
 
-        result = f"Successfully processed: {task.data}"   
-        self._report_completion(task.task_id, True, result)
+        # Simulate random failures for testing retry mechanism
+        if random.random() < FAILURE_RATE:
+            # Simulate failure
+            error = "Processing failed"
+            print(f"[AGENT-{self.agent_id}] ❌ SIMULATED FAILURE: {error}")
+            self._report_completion(task.task_id, False, error)
+        else:
+            # Normal success
+            result = f"Successfully processed: {task.data}"   
+            print(f"[AGENT-{self.agent_id}] ✅ Task completed successfully!")
+            self._report_completion(task.task_id, True, result)
 
-        
-        print(f"[AGENT-{self.agent_id}] Completed task!")
         print()
 
     def _report_completion(self, task_id, success, result):

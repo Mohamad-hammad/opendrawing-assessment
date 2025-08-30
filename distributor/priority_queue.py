@@ -14,15 +14,19 @@ class PriorityTask:
         self.task = task
     
     def __lt__(self, other):
-        # Rule 1: paid before free
+        # Rule 1: Non-retry tasks before retry tasks (retries get lower priority)
+        if self.task.is_retry() != other.task.is_retry():
+            return not self.task.is_retry()  # Non-retries (False) come before retries (True)
+        
+        # Rule 2: paid before free
         if self.task.user_tier != other.task.user_tier:
             return self.task.user_tier == "paid" and other.task.user_tier == "free"
         
-        # Rule 2: shorter processing time first
+        # Rule 3: shorter processing time first
         if self.task.est_processing_time != other.task.est_processing_time:
             return self.task.est_processing_time < other.task.est_processing_time
         
-        # Rule 3: older tasks first 
+        # Rule 4: older tasks first (prevent starvation)
         return self.task.enqueued_at < other.task.enqueued_at
     
     def __eq__(self, other):
