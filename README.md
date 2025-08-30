@@ -81,8 +81,6 @@ python test_with_agent.py
 ### Client (`client/`)
 - **`main.py`**: Basic ping test
 - **`test_with_agent.py`**: Main testing file - submits tasks and demonstrates workflow
-- **`submittest.py`**: Submit demo tasks to test priority ordering  
-- **`test_fetch.py`**: Test priority fetching behavior
 
 ### Protocol (`proto/`)
 - **`task.proto`**: gRPC service definitions
