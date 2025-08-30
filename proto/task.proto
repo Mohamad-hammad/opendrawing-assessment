@@ -14,3 +14,15 @@ message PingResponse {
     string message = 1;
     string timestamp = 2;
 }
+
+message SubmitTaskRequest {
+    string user_tier = 1;  // "paid" or "free"
+    int32 est_processing_time = 2;  // seconds
+    string data = 3;  // task payload
+}
+
+message SubmitTaskResponse {
+    string task_id = 1;
+    string status = 2;  // "enqueued"
+    int32 queue_position = 3;
+}
