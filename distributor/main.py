@@ -16,6 +16,7 @@ from priority_queue import TaskQueue
 class TaskDistributorService(task_pb2_grpc.TaskDistributorServicer):
     def __init__(self):
         self.task_queue = TaskQueue()
+        self.completed_tasks = {}  # Store completed task info
         print("server==> TaskDistributorService initialized with priority queue")
     
     def Ping(self, request, context):
@@ -93,6 +94,45 @@ class TaskDistributorService(task_pb2_grpc.TaskDistributorServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"Internal error: {str(e)}")
             return task_pb2.FetchTaskResponse(has_task=False)
+
+    def CompleteTask(self, request, context):
+        try:
+            task_id = request.task_id
+            agent_id = request.agent_id
+            success = request.success
+            result = request.result
+            
+            self.completed_tasks[task_id] = {
+                'agent_id': agent_id,
+                'success': success,
+                'result': result,
+                'completed_at': datetime.now()
+            }
+            
+            if success:
+                print(f"server ==> Task {task_id[:8]} completed successfully by {agent_id}")
+                print(f"server ==> Result: {result}")
+                message = "Task completed successfully"
+            else:
+                print(f"server ==> Task {task_id[:8]} failed by {agent_id}")
+                print(f"server ==> Error: {result}")
+                message = "Task failure acknowledged"
+                
+            
+            return task_pb2.CompleteTaskResponse(
+                acknowledged=True,
+                message=message
+            )
+            
+        except Exception as e:
+            print(f"server ==> Error handling completion: {str(e)}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(str(e))
+            return task_pb2.CompleteTaskResponse(
+                acknowledged=False,
+                message=f"Error: {str(e)}"
+            )
+
 
 def serve():
     print("server ==> Starting Task Distributor server...")

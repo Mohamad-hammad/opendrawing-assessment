@@ -57,10 +57,31 @@ class TaskAgent:
         
         # Simulate work
         time.sleep(task.est_processing_time)
+
+        result = f"Successfully processed: {task.data}"   
+        self._report_completion(task.task_id, True, result)
+
         
         print(f"[AGENT-{self.agent_id}] Completed task!")
         print()
 
+    def _report_completion(self, task_id, success, result):
+        try:
+            response = self.stub.CompleteTask(task_pb2.CompleteTaskRequest(
+                task_id=task_id,
+                agent_id=self.agent_id,
+                success=success,
+                result=result
+            ))
+            
+            if response.acknowledged:
+                status = "==> SUCCESS" if success else "==> FAILED"
+                print(f"[AGENT-{self.agent_id}] {status} - {response.message}")
+            else:
+                print(f"[AGENT-{self.agent_id}]  Completion not acknowledged: {response.message}")
+                
+        except Exception as e:
+            print(f"[AGENT-{self.agent_id}] Error reporting completion: {e}")
 def main():
     if len(sys.argv) != 2:
         print("Usage: python main.py <agent_id>")

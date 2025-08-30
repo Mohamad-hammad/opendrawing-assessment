@@ -6,6 +6,8 @@ service TaskDistributor {
     rpc Ping(PingRequest) returns (PingResponse);
     rpc SubmitTask(SubmitTaskRequest) returns (SubmitTaskResponse);
     rpc FetchTask(FetchTaskRequest) returns (FetchTaskResponse);
+    rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
+
 }
 
 message PingRequest {
@@ -39,4 +41,16 @@ message FetchTaskResponse {
     string user_tier = 3;                 // "paid" or "free"
     int32 est_processing_time = 4;        // seconds
     string data = 5;                      // task payload
+}
+
+message CompleteTaskRequest {
+    string task_id = 1;
+    string agent_id = 2;
+    bool success = 3;           // true if successful, false if failed
+    string result = 4;          // result data or error message
+}
+
+message CompleteTaskResponse {
+    bool acknowledged = 1;      // true if distributor received the completion
+    string message = 2;         // response message
 }
