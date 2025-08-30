@@ -62,6 +62,37 @@ class TaskDistributorService(task_pb2_grpc.TaskDistributorServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"Internal error: {str(e)}")
             return task_pb2.SubmitTaskResponse()
+    def FetchTask(self, request, context):
+      
+        try:
+            agent_id = request.agent_id
+            
+            # Get highest priority task from queue
+            task = self.task_queue.get_next_task()
+            
+            if task is None:
+                # No tasks available
+                print(f"server ==> Agent {agent_id} requested task - queue empty")
+                return task_pb2.FetchTaskResponse(has_task=False)
+            
+            # Mark task as assigned to this agent
+            task.assigned_agent = agent_id
+            
+            print(f"server ==> Agent {agent_id} fetched task: {task}")
+            
+            return task_pb2.FetchTaskResponse(
+                has_task=True,
+                task_id=task.id,
+                user_tier=task.user_tier,
+                est_processing_time=task.est_processing_time,
+                data=task.data
+            )
+            
+        except Exception as e:
+            print(f"server ==> Error fetching task: {str(e)}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Internal error: {str(e)}")
+            return task_pb2.FetchTaskResponse(has_task=False)
 
 def serve():
     print("server ==> Starting Task Distributor server...")
@@ -80,7 +111,7 @@ def serve():
     # Start server
     server.start()
     print("server ==> Task Distributor server started on port 50051")
-    print("server ==> Ready to accept task submissions!")
+    print("server ==> Ready to accept task submissions and fetch requests!")
     
     try:
         server.wait_for_termination()

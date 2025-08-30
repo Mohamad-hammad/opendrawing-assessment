@@ -5,6 +5,7 @@ package task;
 service TaskDistributor {
     rpc Ping(PingRequest) returns (PingResponse);
     rpc SubmitTask(SubmitTaskRequest) returns (SubmitTaskResponse);
+    rpc FetchTask(FetchTaskRequest) returns (FetchTaskResponse);
 }
 
 message PingRequest {
@@ -26,4 +27,16 @@ message SubmitTaskResponse {
     string task_id = 1;
     string status = 2;  // "enqueued"
     int32 queue_position = 3;
+}
+
+message FetchTaskRequest {
+    string agent_id = 1;  // ID of the agent requesting work
+}
+
+message FetchTaskResponse {
+    bool has_task = 1;                    // true if task available, false if queue empty
+    string task_id = 2;                   // task identifier
+    string user_tier = 3;                 // "paid" or "free"
+    int32 est_processing_time = 4;        // seconds
+    string data = 5;                      // task payload
 }
