@@ -4,6 +4,7 @@ package task;
 
 service TaskDistributor {
     rpc Ping(PingRequest) returns (PingResponse);
+    rpc SubmitTask(SubmitTaskRequest) returns (SubmitTaskResponse);
 }
 
 message PingRequest {

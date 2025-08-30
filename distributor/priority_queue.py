@@ -41,6 +41,7 @@ class TaskQueue:
             heapq.heappush(self._heap, PriorityTask(task))
             self._tasks[task.id] = task
             print(f"Added {task} to queue (size: {len(self._heap)})")
+            return len(self._heap)  
     
     def get_next_task(self):
         with self._lock:
