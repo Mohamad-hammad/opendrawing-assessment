@@ -40,13 +40,18 @@ A distributed task processing system built with gRPC that manages task assignmen
 pip install -r requirements.txt
 ```
 
-### 2. Start the Distributor
+### 2. Generate Protos
+```bash
+py -m grpc_tools.protoc --proto_path=./proto --python_out=./proto --grpc_python_out=./proto ./proto/task.proto
+```
+
+### 3. Start the Distributor
 ```bash
 cd distributor
 python main.py
 ```
 
-### 3. Start Agents (in separate terminals)
+### 4. Start Agents (in separate terminals)
 ```bash
 # Agent 1
 cd agent
