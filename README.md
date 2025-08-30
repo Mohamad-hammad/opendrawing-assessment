@@ -1,3 +1,6 @@
+### NOTE: There might be too many print statemetns in the codebase but they were put there to show how does the system (distributor, client, agent) actually works for the demo purposes.
+
+
 # Task Distribution System
 
 A distributed task processing system built with gRPC that manages task assignment between a distributor and multiple agents using a priority queue with retry mechanism.
